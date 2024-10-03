@@ -15,7 +15,7 @@ class ChatServer implements MessageComponentInterface {
 
     public function onOpen(ConnectionInterface $conn) {
         $this->clients->attach($conn);
-        $conn->send(json_encode(['type' => 'info', 'message' => 'Welcome!']));
+        $conn->send(json_encode(['type' => 'info', 'message' => 'Connected to server']));
     }
 
     public function onMessage(ConnectionInterface $from, $msg) {
@@ -23,13 +23,10 @@ class ChatServer implements MessageComponentInterface {
 
         switch ($data['type']) {
             case 'create_room':
-                $roomCode = uniqid(); // Generate a unique room code
+                $roomCode = uniqid();
                 $nickname = $data['nickname'];
-                $this->rooms[$roomCode] = [
-                    'owner' => $from,
-                    'clients' => [],
-                    'nicknames' => [$from->resourceId => $nickname]
-                ];
+                $this->rooms[$roomCode] = ['owner' => $from, 'clients' => []];
+                $this->rooms[$roomCode]['clients'][$nickname] = $from;
                 $from->send(json_encode(['type' => 'created_room', 'roomCode' => $roomCode]));
                 break;
 
@@ -37,8 +34,7 @@ class ChatServer implements MessageComponentInterface {
                 $roomCode = $data['roomCode'];
                 $nickname = $data['nickname'];
                 if (isset($this->rooms[$roomCode])) {
-                    $this->rooms[$roomCode]['clients'][] = $from;
-                    $this->rooms[$roomCode]['nicknames'][$from->resourceId] = $nickname;
+                    $this->rooms[$roomCode]['clients'][$nickname] = $from;
                     $from->send(json_encode(['type' => 'joined_room', 'roomCode' => $roomCode]));
                 } else {
                     $from->send(json_encode(['type' => 'error', 'message' => 'Room not found']));
@@ -48,14 +44,15 @@ class ChatServer implements MessageComponentInterface {
             case 'send_message':
                 $roomCode = $data['roomCode'];
                 $message = $data['message'];
+                $nickname = $data['nickname'];
                 if (isset($this->rooms[$roomCode])) {
-                    $nickname = $this->rooms[$roomCode]['nicknames'][$from->resourceId];
-                    foreach ($this->rooms[$roomCode]['clients'] as $client) {
-                        $client->send(json_encode([
-                            'type' => 'message',
-                            'message' => $message,
-                            'nickname' => $nickname
-                        ]));
+                    foreach ($this->rooms[$roomCode]['clients'] as $clientNickname => $client) {
+                        if ($from !== $client) {
+                            $client->send(json_encode([
+                                'type' => 'message', 
+                                'message' => $nickname . ': ' . $message
+                            ]));
+                        }
                     }
                 }
                 break;
@@ -95,3 +92,4 @@ $server = IoServer::factory(
 );
 
 $server->run();
+?>
