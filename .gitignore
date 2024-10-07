@@ -1,0 +1,33 @@
+# Node.js dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Log files
+*.log
+
+# Temporary files
+tmp/
+temp/
+.DS_Store          # macOS system files
+Thumbs.db          # Windows system files
+
+# Build output
+dist/
+build/
+
+# IDE-specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Ignore coverage files (if using testing tools)
+coverage/
+
+# Ignore other common files
+*.tgz
+*.zip
+*.tar
+*.gz
