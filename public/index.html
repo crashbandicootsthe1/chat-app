@@ -3,16 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Sleek Real-time Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f7fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        /* Chat Container */
+        #chat-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        /* Nickname Section */
+        #nicknameSection {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #nicknameSection label {
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        #nicknameSection input {
+            padding: 10px 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 10px;
+            outline: none;
+            font-size: 16px;
+        }
+
+        #nicknameSection button {
+            background-color: #3b82f6;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        #nicknameSection button:hover {
+            background-color: #2563eb;
+        }
+
+        /* Error Message */
+        #errorMessage {
+            background-color: #ffe5e5;
+            padding: 10px;
+            border-radius: 4px;
+            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        /* Chat Section */
+        #chat {
+            display: none;
+            margin-top: 20px;
+        }
+
+        #messagesSection {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+
+        #messages ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #messages li {
+            background-color: #f1f5f9;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+        }
+
+        #messages li:nth-child(odd) {
+            background-color: #e2e8f0;
+        }
+
+        #messageSection {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        #sendMessage {
+            background-color: #10b981;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        #sendMessage:hover {
+            background-color: #059669;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            #chat-container {
+                padding: 15px;
+            }
+
+            #messageInput {
+                font-size: 14px;
+            }
+
+            #nicknameSection button, #sendMessage {
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Chat App</h1>
-    <ul id="messages"></ul>
-    <form id="form" action="">
-        <input id="input" autocomplete="off" placeholder="Type your message..." />
-        <button>Send</button>
-    </form>
-    <script src="script.js"></script>
+    <div id="chat-container">
+        <h1>Join the Chat!</h1>
+
+        <!-- Nickname Section -->
+        <div id="nicknameSection">
+            <label for="nickname">Pick a nickname:</label>
+            <input type="text" id="nickname" placeholder="Enter your nickname" required>
+            <button id="joinChat">Join Chat</button>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage">
+            <p>Error: You must enter a nickname!</p>
+        </div>
+
+        <!-- Chat Section -->
+        <div id="chat">
+            <div id="messagesSection">
+                <ul id="messages"></ul>
+            </div>
+
+            <!-- Message Form -->
+            <div id="messageSection">
+                <input id="messageInput" autocomplete="off" placeholder="Type a message" required>
+                <button id="sendMessage">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // HTML Elements
+        const nicknameInput = document.getElementById('nickname');
+        const joinChatBtn = document.getElementById('joinChat');
+        const chatSection = document.getElementById('chat');
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageBtn = document.getElementById('sendMessage');
+        const messagesList = document.getElementById('messages');
+        const errorMessageDiv = document.getElementById('errorMessage');
+
+        let nickname = '';
+
+        // Join chat button handler
+        joinChatBtn.addEventListener('click', () => {
+            nickname = nicknameInput.value.trim();
+
+            if (nickname === "") {
+                showError("Please enter a valid nickname.");
+                return;
+            }
+
+            // Set nickname and show chat section
+            socket.emit('setNickname', nickname);
+            document.getElementById('nicknameSection').style.display = 'none';
+            chatSection.style.display = 'block';
+            errorMessageDiv.style.display = 'none';
+        });
+
+        // Send message button handler
+        sendMessageBtn.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message !== "") {
+                socket.emit('chatMessage', message);
+                messageInput.value = '';
+            }
+        });
+
+        // Show previous messages when connecting
+        socket.on('previousMessages', (messages) => {
+            messages.forEach(msg => {
+                appendMessage(`${msg.username} (${new Date(msg.timestamp).toLocaleTimeString()}): ${msg.message}`);
+            });
+        });
+
+        // Show incoming messages
+        socket.on('chatMessage', (msg) => {
+            appendMessage(`${msg.username} (${new Date(msg.timestamp).toLocaleTimeString()}): ${msg.message}`);
+        });
+
+        // Handle error messages
+        socket.on('errorMessage', (msg) => {
+            showError(msg);
+        });
+
+        // Helper functions
+        function appendMessage(message) {
+            const li = document.createElement('li');
+            li.textContent = message;
+            messagesList.appendChild(li);
+        }
+
+        function showError(msg) {
+            errorMessageDiv.style.display = 'block';
+            errorMessageDiv.querySelector('p').textContent = msg;
+        }
+    </script>
 </body>
 </html>
